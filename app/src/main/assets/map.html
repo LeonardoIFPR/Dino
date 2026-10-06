@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+html,body,#map{height:100%;margin:0;background:#e4ead9;font-family:system-ui,sans-serif}
+.leaflet-container{background:#e4ead9}.leaflet-control-attribution{font-size:9px!important;background:#fffdf8e8!important}
+.find{display:grid;place-items:center;width:42px;height:42px;border-radius:16px;background:#fffdf8;color:#244c3c;border:2px solid #244c3c;box-shadow:0 4px 12px #244c3c33;font-size:25px}
+.find.dino{border-color:#c46a41;color:#c46a41}.player{width:14px;height:14px;border-radius:50%;background:#244c3c;border:4px solid white;box-shadow:0 0 0 9px #244c3c22}
+#status{position:absolute;bottom:25px;left:12px;right:12px;z-index:500;padding:10px 14px;border-radius:12px;background:#fffdf8ed;font-size:12px;color:#244c3c;display:none}
+.leaflet-control-zoom{border:0!important;box-shadow:0 3px 12px #244c3c22!important}.leaflet-control-zoom a{color:#244c3c!important;background:#fffdf8!important}
+</style>
+</head>
+<body><div id="map"></div><div id="status" role="status">Mapa sem conexão. Os fragmentos continuam disponíveis na lista abaixo.</div>
+<script src="vendor/leaflet.js"></script>
+<script>
+let map,markerLayer,userMarker,range,lastFocus;
+const status=document.getElementById('status');
+try {
+ map=L.map('map',{zoomControl:false}).setView([-8.063,-34.871],18);
+ L.control.zoom({position:'topright'}).addTo(map);
+ const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+ tiles.on('tileerror',()=>status.style.display='block');
+ tiles.on('tileload',()=>status.style.display='none');
+ markerLayer=L.layerGroup().addTo(map);
+} catch(e){status.style.display='block';}
+window.updateExpedition=function(data){
+ if(!map)return;
+ if(lastFocus!==data.focus){map.setView(data.player||data.center,18);lastFocus=data.focus;}
+ markerLayer.clearLayers();
+ data.markers.forEach(m=>{
+  const dino=m.type==='bone'||m.type==='tooth';
+  const glyph={ammonite:'◎',trilobite:'≋',tooth:'◭',bone:'✣'}[m.type];
+  const icon=L.divIcon({className:'',html:'<div class="find '+(dino?'dino':'')+'">'+glyph+'</div>',iconSize:[46,46],iconAnchor:[23,23]});
+  L.marker([m.lat,m.lng],{icon,title:m.label,alt:m.label}).addTo(markerLayer).on('click',()=>Expedition.select(m.id));
+ });
+ if(userMarker)map.removeLayer(userMarker);if(range)map.removeLayer(range);
+ if(data.player){
+  range=L.circle(data.player,{radius:100,color:'#244c3c',weight:1,dashArray:'5 6',fillOpacity:.04}).addTo(map);
+  userMarker=L.marker(data.player,{icon:L.divIcon({className:'',html:'<div class="player"></div>',iconSize:[22,22],iconAnchor:[11,11]}),title:'Você está aqui'}).addTo(map);
+ }
+};
+</script></body></html>
